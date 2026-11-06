@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAFEW – German Puzzle Arena</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',sans-serif; }
+  body { background:linear-gradient(160deg,#1a1a2e,#16213e); color:#fff; min-height:100vh; padding:16px; }
+  .wrap { max-width:900px; margin:0 auto; }
+  header { text-align:center; margin-bottom:20px; }
+  h1 { color:#ffd700; font-size:2rem; letter-spacing:2px; }
+  .tag { color:#aaa; font-size:.9rem; }
+  .stats { display:flex; justify-content:center; gap:12px; margin-top:12px; flex-wrap:wrap; }
+  .stat { background:#0f3460; padding:8px 16px; border-radius:10px; font-weight:bold; }
+  .stat span { color:#ffd700; }
+  .levels { display:flex; justify-content:center; gap:8px; margin:14px 0; }
+  .lvl { padding:6px 18px; border-radius:20px; border:2px solid #ffd700; background:none; color:#fff; cursor:pointer; font-weight:bold; }
+  .lvl.active { background:#ffd700; color:#1a1a2e; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; }
+  .card { background:#0f3460; border-radius:14px; padding:22px 14px; text-align:center; cursor:pointer; transition:.2s; border:2px solid transparent; }
+  .card:hover { transform:translateY(-4px); border-color:#ffd700; }
+  .card .icon { font-size:2.2rem; }
+  .card h3 { margin:8px 0 4px; }
+  .card p { font-size:.8rem; color:#aaa; }
+  .panel { display:none; background:#0f3460; border-radius:14px; padding:24px; }
+  .panel.show { display:block; }
+  .btn { background:#ffd700; color:#1a1a2e; border:none; padding:10px 24px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:1rem; margin:4px; }
+  .btn.secondary { background:#333; color:#fff; }
+  .scrambled { font-size:2rem; letter-spacing:8px; text-align:center; margin:20px 0; color:#ffd700; font-weight:bold; }
+  input { padding:12px; border-radius:8px; border:none; font-size:1.1rem; width:100%; max-width:320px; text-align:center; }
+  .msg { text-align:center; min-height:24px; margin:10px 0; font-weight:bold; }
+  .correct { color:#4caf50; } .wrong { color:#f44336; }
+  .wsgrid { display:grid; gap:2px; margin:16px auto; width:fit-content; touch-action:manipulation; }
+  .wsgrid div { width:38px; height:38px; display:flex; align-items:center; justify-content:center; background:#16213e; border-radius:4px; font-weight:bold; cursor:pointer; user-select:none; }
+  .wsgrid div.sel { background:#ffd700; color:#1a1a2e; }
+  .wsgrid div.found { background:#4caf50; color:#fff; }
+  .words { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:10px; }
+  .wordchip { background:#16213e; padding:4px 12px; border-radius:12px; }
+  .wordchip.done { text-decoration:line-through; color:#4caf50; }
+  .quizopt { display:block; width:100%; margin:8px 0; padding:14px; background:#16213e; color:#fff; border:2px solid #333; border-radius:10px; cursor:pointer; font-size:1rem; text-align:left; }
+  .quizopt:hover { border-color:#ffd700; }
+  .quizopt.right { border-color:#4caf50; background:#1b3a1b; }
+  .quizopt.bad { border-color:#f44336; background:#3a1b1b; }
+  .artbtn { font-size:1.4rem; padding:16px 30px; }
+  .pairs { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+  .paircard { background:#16213e; padding:14px; border-radius:10px; cursor:pointer; text-align:center; border:2px solid #333; }
+  .paircard.sel { border-color:#ffd700; }
+  .paircard.matched { border-color:#4caf50; opacity:.5; }
+  .timer { font-size:1.4rem; color:#f44336; font-weight:bold; text-align:center; }
+  .progress { background:#16213e; border-radius:10px; padding:16px; margin-top:20px; }
+  .bar { background:#333; border-radius:8px; height:18px; overflow:hidden; margin-top:6px; }
+  .bar div { background:#4caf50; height:100%; transition:.4s; }
+  .back { margin-bottom:14px; }
+  .hintbox { text-align:center; color:#aaa; min-height:22px; margin:6px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🇩🇪 SAFEW</h1>
+    <div class="tag">Learn German. Solve Puzzles. Become Fluent.</div>
+    <div class="stats">
+      <div class="stat">⭐ Score: <span id="score">0</span></div>
+      <div class="stat">🔥 Streak: <span id="streak">0</span></div>
+      <div class="stat">🏅 Solved: <span id="solved">0</span></div>
+    </div>
+  </header>
+
+  <div class="levels">
+    <button class="lvl active" onclick="setLevel('A1',this)">A1</button>
+    <button class="lvl" onclick="setLevel('A2',this)">A2</button>
+    <button class="lvl" onclick="setLevel('B1',this)">B1</button>
+  </div>
+
+  <div id="menu" class="grid">
+    <div class="card" onclick="start('scramble')"><div class="icon">🔤</div><h3>Word Scramble</h3><p>Rearrange German letters</p></div>
+    <div class="card" onclick="start('wordsearch')"><div class="icon">🔍</div><h3>Word Search</h3><p>Find hidden vocabulary</p></div>
+    <div class="card" onclick="start('quiz')"><div class="icon">🧠</div><h3>German Quiz</h3><p>Grammar & vocabulary</p></div>
+    <div class="card" onclick="start('articles')"><div class="icon">📕</div><h3>Article Challenge</h3><p>DER, DIE or DAS?</p></div>
+    <div class="card" onclick="start('pairs')"><div class="icon">🔗</div><h3>Match Pairs</h3><p>German ↔ English</p></div>
+    <div class="card" onclick="start('speed')"><div class="icon">⚡</div><h3>Speed Challenge</h3><p>Beat the clock!</p></div>
+    <div class="card" onclick="resetProgress()" style="border-color:#f44336"><div class="icon">🔄</div><h3>Reset Progress</h3><p>Start over</p></div>
+  </div>
+
+  <div id="panel" class="panel">
+    <button class="btn secondary back" onclick="goMenu()">← Menu</button>
+    <div id="gamearea"></div>
+  </div>
+
+  <div class="progress">
+    <b>📊 Level Progress (A1)</b>
+    <div class="bar"><div id="progbar" style="width:0%"></div></div>
+  </div>
+</div>
+
+<script>
+/* ============ DATA ============ */
+const V = {
+  A1: [["HAUS","house"],["HUND","dog"],["BROT","bread"],["BUCH","book"],["WASSER","water"],["TISCH","table"],["FRAU","woman"],["KIND","child"],
+      [["der","masc"],["die","fem"],["das","neut"]],
+      ["der Hund 🐕","die Frau","das Kind","der Tisch","die Milch","das Buch"]],
+  A2: [["ARBEIT","work"],["FENSTER","window"],["REISEN","to travel"],["GESUND","healthy"],["WOCHENENDE","weekend"],["FREUND","friend"],["KÜCHE","kitchen"],["SCHLAFEN","to sleep"],
+      [["der","masc"],["die","fem"],["das","neut"]],
+      ["der Bahnhof","die Zeitung","das Schlafzimmer","der Monat","die Schule","das Auto"]],
+  B1: [["GESELLSCHAFT","society"],["ERFAHRUNG","experience"],["ENTWICKELN","to develop"],["VORSICHTIG","careful"],["VERSTÄNDNIS","understanding"],["BESCHREIBEN","to describe"],["MÖGLICHKEIT","possibility"],["BEDIETUNG","meaning"],
+      [["der","masc"],["die","fem"],["das","neut"]],
+      ["der Einfluss","die Entscheidung","das Ereignis","der Fortschritt","die Umgebung","das Verhalten"]]
+};
+const HINTS = { A1:"A1 Tip: nouns you can touch are often easy starting words!", A2:"A2 Tip: watch out for umlauts ä, ö, ü!", B1:"B1 Tip: abstract nouns often end in -ung, -heit, -keit!" };
+const QUIZ = {
+  A1: [["Ich ___ ein Buch.","habe",["bin","habe","ist","hast"]],["Wie ___ du?","heißt",["heiße"," heißt","heißt","heißen"]],["___ geht es dir?","Wie",["Wo","Wie","Wer","Wann"]],["Das ist ___ Mann.","ein",["eine","ein","einen","einem"]],["Wir ___ Deutsche.","sind",["ist","sind","seid","bin"]],["Die Katze trinkt ___.","Milch",["Milch","Brot","Buch","Haus"]]],
+  A2: [["Ich ___ gestern ins Kino.","bin",["bin","habe","war","gehe"]],["Er hat das Buch ___.","gelesen",["liesen","gelesen","lesen","gelest"]],["Während ___ Essens sprachen wir.","des",["des","dem","der","das"]],["Ich habe ___ Freund besucht.","meinen",["mein","meinen","meiner","meine"]],["Das Wetter war ___ schön.","wirklich",["wirklich","wirklicher","wirklichste","wirklicheren"]],["Kannst du mir ___?","helfen",["helfen","hilft","half","geholfen"]]],
+  B1: [["Obwohl es regnete, ___ wir spazieren.","gingen",["gingen","gehen","gehen würden","gehen werden"]],["___ ich gewusst hätte, wäre ich gekommen.","Wenn",["Wenn","Obwohl","Deshalb","Trotzdem"]],["Es liegt ___, dass er recht hat.","daran",["daran","darauf","dazu","dafür"]],["Der Bericht wurde ___ Regierung geschrieben.","von der",["von der","von dem","von der","aus der"]],["___ man MONEY hat, kann man reisen.","Wenn",["Wenn","Auch","Trotz","Weil"]],["Das Problem ___ gelöst werden.","muss",["muss","musste","sollte werden","wird"]]]
+};
+let level='A1', score=0, streak=0, solved=0, timer=null;
+const $=id=>document.getElementById(id);
+function save(){ localStorage.setItem('safew',JSON.stringify({score,streak,solved})); upd(); }
+function load(){ const d=JSON.parse(localStorage.getItem('safew')||'{}'); score=d.score||0; streak=d.streak||0; solved=d.solved||0; upd(); }
+function upd(){ (′score′).textContent=score;('score').textContent=score;(′score′).textContent=score;('streak').textContent=streak; $('solved').textContent=solved;
+  (′progbar′).style.width=Math.min(100,(solved('progbar').style.width=Math.min(100,(solved%20)*5)+'%'; document.querySelector('.progress b').textContent=`📊 Level Progress ((′progbar′).style.width=Math.min(100,(solved{level}) — next badge at ${20-(solved%20)} more puzzles`; }
+function setLevel(l,btn){ level=l; document.querySelectorAll('.lvl').forEach(b=>b.classList.remove('active')); btn.classList.add
+('active'); (′progbar′).parentElement.querySelector(′b′).textContent=‘📊LevelProgress(('progbar').parentElement.querySelector('b').textContent=`📊 Level Progress ((′progbar′).parentElement.querySelector(′b′).textContent=‘📊LevelProgress({level})`; save(); }
+function goMenu(){ clearInterval(timer); (′panel′).classList.remove(′show′);('panel').classList.remove('show');(′panel′).classList.remove(′show′);('menu').style.display='grid'; }
+function start(g){ (′menu′).style.display=′none′;('menu').style.display='none';(′menu′).style.display=′none′;('panel').classList.add('show'); $('gamearea').innerHTML=''; ({scramble:gameScramble,wordsearch:gameWS,quiz:gameQuiz,articles:gameArticles,pairs:gamePairs,speed:gameSpeed})[g](); }
+function reward(pts){ score+=pts; solved++; streak++; save(); }
+function fail(){ streak=0; save(); }
+function shuffle(a){ a=[...a]; for(let i=a.length-1;i>0;i--){ const j=Math.random()*(i+1)|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+/* ============ SCRAMBLE ============ */
+let scWord, scHint;
+function gameScramble(){ nextScramble(); }
+function nextScramble(){
+  const list=shuffle(V[level]).filter(w=>Array.isArray(w)&&typeof w[0]==='string');
+  scWord=list[Math.random()*list.length|0];
+  const scr=shuffle(scWord[0].split('')).join(' ');
+  scHint=false;
+  $('gamearea').innerHTML=`
+    <h2>🔤 Word Scramble <small style="color:#aaa">(${level})</small></h2>
+    <div class="scrambled">${scr}</div>
+    <div class="hintbox" id="hintb"></div>
+    <div style="text-align:center"><input id="ans" placeholder="Type the German word" autocomplete="off" onkeydown="if(event.key==='Enter')checkSc()"></div>
+    <div class="msg" id="msg"></div>
+    <div style="text-align:center">
+      <button class="btn" onclick="checkSc()">Check ✔</button>
+      <button class="btn secondary" onclick="showHint()">💡 Hint (-2)</button>
+      <button class="btn secondary" onclick="nextScramble()">Skip →</button>
+    </div>`;
+  $('ans').focus();
+}
+function showHint(){ if(scHint)return; scHint=true; score=Math.max(0,score-2); save();
+  (′hintb′).textContent=‘💡Startswith"('hintb').textContent=`💡 Starts with "(′hintb′).textContent=‘💡Startswith"{scWord[0][0]}" — means "${scWord[1]}"`; }
+function checkSc(){
+  const v=$('ans').value.trim().toUpperCase();
+  if(v===scWord[0]){ msg('✅ Correct! +10 points','correct'); reward(10); setTimeout(nextScramble,900); }
+  else { msg('❌ Not quite — try again!','wrong'); fail(); }
+}
+function msg(t,c){ (′msg′).textContent=t;('msg').textContent=t;(′msg′).textContent=t;('msg').className='msg '+c; }
+
+/* ============ WORD SEARCH ============ */
+function gameWS(){
+  const pool=shuffle(V[level].filter(w=>Array.isArray(w)&&typeof w[0]==='string'&&w[0].length<=8)).slice(0,5);
+  const size=10, grid=Array.from({length:size},()=>Array(size).fill(''));
+  const found=new Set(); let selected=[];
+  const dirs=[[0,1],[1,0],[1,1],[0,-1],[-1,0],[-1,-1],[1,-1],[-1,1]];
+  pool.forEach(([word])=>{
+    for(let t=0;t<50;t++){
+      const [dx,dy]=dirs[Math.random()*dirs.length|0];
+      const r=Math.random()*size|0, c=Math.random()*size|0;
+      let ok=true;
+      for(let i=0;i<word.length;i++){ const nr=r+dx*i,nc=c+dy*i; if(nr<0||nc<0||nr>=size||nc>=size||grid[nr][nc]){ok=false;break;} }
+      if(ok){ for(let i=0;i<word.length;i++) grid[r+dx*i][c+dy*i]=word[i]; break; }
+    }
+  });
+  const az='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  for(let r=0;r<size;r++)for(let c=0;c<size;c++) if(!grid[r][c]) grid[r][c]=az[Math.random()*26|0];
+  $('gamearea').innerHTML=`
+    <h2>🔍 Word Search <small style="color:#aaa">(${level})</small></h2>
+    <p style="text-align:center;color:#aaa">Tap letters in order to spell a word</p>
+    <div class="wsgrid" id="wsg"></div>
+    <div class="words" id="wlist"></div><div class="msg" id="msg"></div>
+    <div style="text-align:center"><button class="btn secondary" onclick="start('wordsearch')">🔄 New Puzzle</button></div>`;
+  const el=(′wsg′);el.style.gridTemplateColumns=‘repeat(('wsg'); el.style.gridTemplateColumns=`repeat((′wsg′);el.style.gridTemplateColumns=‘repeat({size},1fr)`;
+  grid.forEach((row,r)=>row.forEach((ch,c)=>{
+    const d=document.createElement('div'); d.textContent=ch; d.dataset.r=r; d.dataset.c=c;
+    d.onclick=()=>tap(d,r,c); el.appendChild(d);
+  }));
+  renderList();
+  function renderList(){ (′wlist′).innerHTML=pool.map(([w,m])=>‘<spanclass="wordchip('wlist').innerHTML=pool.map(([w,m])=>`<span class="wordchip(′wlist′).innerHTML=pool.map(([w,m])=>‘<spanclass="wordchip{found.has(w)?'done':''}">w={w} =w={m}</span>`).join(''); }
+  function tap(d,r,c){
+    if(d.classList.contains('found'))return;
+    const last=selected[selected.length-1];
+    if(last && Math.abs(last.r-r)>1||last && Math.abs(last.c-c)>1){ selected=[]; el.querySelectorAll('.sel').forEach(x=>x.classList.remove('sel')); }
+    d.classList.add('sel'); selected.push({r,c,el:d});
+    const s=selected.map(x=>grid[x.r][x.c]).join('');
+    const rev=s.split('').reverse().join('');
+    const hit=pool.find(([w])=>w===s||w===rev);
+    if(hit && !found.has(hit[0])){
+      found.add(hit[0]); selected.forEach(x=>{x.el.classList.remove('sel');x.el.classList.add('found');});
+      selected=[]; reward(8); msg(`✅ Found ${hit[0]}! +8`,'correct'); renderList();
+      if(found.size===pool.length) msg('🎉 All words found! Great job!','correct');
+    } else if(selected.length>12){ selected=[]; el.querySelectorAll('.sel').forEach(x=>x.classList.remove('sel')); }
+  }
+}
+
+/* ============ QUIZ ============ */
+let qi=0, qcorrect=0, qtotal=0;
+function gameQuiz(){ qi=0; qcorrect=0; qtotal=QUIZ[level].length; showQ(); }
+function showQ(){
+  if(qi>=qtotal){
+    const pct=Math.round(qcorrect/qtotal*100);
+    (′gamearea′).innerHTML=‘<h2>🧠QuizComplete!</h2><divclass="scrambled">('gamearea').innerHTML=`<h2>🧠 Quiz Complete!</h2><div class="scrambled">(′gamearea′).innerHTML=‘<h2>🧠QuizComplete!</h2><divclass="scrambled">{qcorrect}/${qtotal}</div>
+      <div class="msg pct>=60?′correct′:′wrong′">{pct>=60?'correct':'wrong'}">pct>=60?′correct′:′wrong′">{pct>=60?'🎉 '+pct+'% — Well done!':'💪 '+pct+'% — Keep practicing!'}</div>
+      <div style="text-align:center"><button class="btn" onclick="start('quiz')">Play Again</button><button class="btn secondary" onclick="goMenu()">Menu</button></div>`;
+    return;
+  }
+  const [q,a,opts]=QUIZ[level][qi];
+  ('gamearea').innerHTML=`<h2>🧠 German Quiz <small style="color:#aaa">({level}) — Qqi+1/{qi+1}/qi+1/{qtotal}</small></h2>
+    <div class="scrambled" style="font-size:1.4rem">${q}</div>
+    <div class="msg" id="msg"></div>
+    <div>{shuffle(opts).map(o=>`<button class="quizopt" onclick="answerQ(this,'{a.replace(/'/g,"\\'")}')">${o}</button>`).join('')}</div>`;
+}
+function answerQ(btn,a){
+  document.querySelectorAll('.quizopt').forEach(b=>b.onclick=null);
+  if(btn.textContent.trim()===a){ btn.classList.add('right'); qcorrect++; reward(6); msg('✅ Richtig! +6','correct'); }
+  else { btn.classList.add('bad'); [...document.querySelectorAll('.quizopt')].find(b=>b.textContent.trim()===a).classList.add('right'); fail(); msg(`❌ Answer: ${a}`,'wrong'); }
+  qi++; setTimeout(showQ,1200);
+}
+
+/* ============ ARTICLES ============ */
+let ai=0, acorrect=0;
+const ARTS=[
+  [["Hund","der"],["Frau","die"],["Kind","das"],["Tisch","der"],["Milch","die"],["Buch","das"],["Wagen","der"],["Zeitung","die"],["Auto","das"],["Lehrer","der"],["Schule","die"],["Fenster","das"],["Stadt","die"],["Wald","der"],["König","der"],["Freiheit","die"],["Ergebnis","das"],["Wochenende","das"],["Regierung","die"],["Einfluss","der"]],
+  [["Bahnhof","der"],["Zeitung","die"],["Schlafzimmer","das"],["Monat","der"],["Schule","die"],["Auto","das"],["Küche","die"],["Garten","der"],["Buch","das"],["Arbeit","die"]],
+  [["Einfluss","der"],["Entscheidung","die"],["Ereignis","das"],["Fortschritt","der"],["Umgebung","die"],["Verhalten","das"],["Gesellschaft","die"],["Verständnis","das"],["Möglichkeit","die"],["Wachstum","das"]]
+];
+function gameArticles(){ ai=0; acorrect=0; showArt(); }
+function showArt(){
+  const pool=ARTS[level==='A1'?0:level==='A2'?1:2];
+  if(ai>=10){ (′gamearea′).innerHTML=‘<h2>📕ArticleChallengeDone!</h2><divclass="scrambled">('gamearea').innerHTML=`<h2>📕 Article Challenge Done!</h2><div class="scrambled">(′gamearea′).innerHTML=‘<h2>📕ArticleChallengeDone!</h2><divclass="scrambled">{acorrect}/10</div>
+    <div class="msg acorrect>=7?′correct′:′wrong′">{acorrect>=7?'correct':'wrong'}">acorrect>=7?′correct′:′wrong′">{acorrect>=7?'🎉 Super!':'💪 Keep going!'}</div>
+    <div style="text-align:center"><button class="btn" onclick="start('articles')">Again</button><button class="btn secondary" onclick="goMenu()">Menu</button></div>`; return; }
+  const [w,art]=pool[Math.random()*pool.length|0];
+  ('gamearea').innerHTML=`<h2>📕 Article Challenge <small style="color:#aaa">—{ai+1}/10</small></h2>
+    <div class="scrambled">___ w</div><divclass="hintbox">{w}</div><div class="hintbox">w</div><divclass="hintbox">{HINTS[level]}</div><div class="msg" id="msg"></div>
+    <div style="text-align:center">
+      <button class="btn artbtn" onclick="pickArt(this,'der')">DER</button>
+      <button class="btn artbtn" onclick="pickArt(this,'die')">DIE</button>
+      <button class="btn artbtn" onclick="pickArt(this,'das')">DAS</button></div>
+    <div style="text-align:center;margin-top:10px"><button class="btn secondary" onclick="skipArt()">Skip →</button></div>`;
+  window.__art=art;
+}
+function pickArt(btn,a){
+  const art=window.__art;
+  document.querySelectorAll('.artbtn').forEach(b=>b.onclick=null);
+  if(a===art){ btn.style.background='#4caf50'; btn.style.color='#fff'; acorrect++; reward(5); msg(`✅ ${art} — Richtig! +5`,'correct'); }
+  else { btn.style.background='#f44336'; btn.style.color='#fff'; msg(`❌ It's "art{art}art{btn.previousElementSibling?art:''} art..."—thearticleis{art} ..." — the article isart..."—thearticleis{art.toUpperCase()}`,'wrong'); fail(); }
+  ai++; setTimeout(showArt,1200);
+}
+function skipArt(){ const art=window.__art; msg(`💡 It's "${art}"`,'wrong'); ai++; setTimeout(showArt,900); }
+
+/* ============ PAIRS ============ */
+function gamePairs(){
+  const pool=shuffle(V[level].filter(w=>Array.isArray(w)&&typeof w[0]==='string')).slice(0,6);
+  let sel=null, matched=0;
+  const de=shuffle(pool), en=shuffle(pool);
+  const cards=[];
+  de.forEach(([w,m],i)=>cards.push({t:w,type:'de',id:i}));
+  en.forEach(([w,m],i)=>cards.push({t:m,type:'en',id:i}));
+  const deck=shuffle(cards);
+  ('gamearea').innerHTML=`<h2>🔗 Match Pairs <small style="color:#aaa">({level})</small></h2>
+    <p style="text-align:center;color:#aaa">Match German words with English meanings</p>
+    <div class="pairs" id="pc"></div><div class="msg" id="msg"></div>
+    <div style="text-align:center"><button class="btn secondary" onclick="start('pairs')">🔄 New</button></div>`;
+  const el=$('pc');
+  deck.forEach(c=>{
+    const d=document.createElement('div'); d.className='paircard'; d.textContent=c.t; d.dataset.id=c.id;
+    d.onclick=()=>{
+      if(d.classList.contains('matched')||d.classList.contains('sel'))return;
+      d.classList.add('sel');
+      if(!sel){ sel={d,id:c.id}; return; }
+      if(sel.id===c.id){
+        sel.d.classList.remove('sel'); sel.d.classList.add('matched'); d.classList.add('matched');
+        matched++; reward(6); msg(`✅ pool[c.id][0]={pool[c.id][0]} =pool[c.id][0]={pool[c.id][1]}  +6`,'correct');
+        if(matched===pool.length){ reward(10); msg('🎉 All pairs matched! +10 bonus!','correct
+
+'); }
+        sel=null;
+      } else { sel.d.classList.remove('sel'); sel={d,id:c.id}; }
+    };
+    el.appendChild(d);
+  });
+}
+
+/* ============ SPEED CHALLENGE ============ */
+let spScore=0, spCount=0;
+function gameSpeed(){
+  clearInterval(timer);
+  let time=60; spScore=0; spCount=0;
+  ('gamearea').innerHTML=`<h2>⚡ Speed Challenge <small style="color:#aaa">({level})</small></h2>
+    <div class="timer" id="tm">⏱ ${time}s</div>
+    <div id="spq"></div><div class="msg" id="msg"></div>
+    <div style="text-align:center"><button class="btn secondary" onclick="goMenu()">End</button></div>`;
+  nextSpeed();
+  timer=setInterval(()=>{
+    time--; (′tm′).textContent=‘⏱('tm').textContent=`⏱(′tm′).textContent=‘⏱{time}s`;
+    if(time<=10) $('tm').style.color='#ff5722';
+    if(time<=0){
+      clearInterval(timer);
+      (′spq′).innerHTML=‘<divclass="scrambled">('spq').innerHTML=`<div class="scrambled">(′spq′).innerHTML=‘<divclass="scrambled">{spScore} pts</div>
+        <div class="msg correct">🎉 Time's up! ${spCount} solved in 60 seconds!</div>
+        <div style="text-align:center"><button class="btn" onclick="start('speed')">Play Again</button><button class="btn secondary" onclick="goMenu()">Menu</button></div>`;
+    }
+  },1000);
+}
+function nextSpeed(){
+  const type=Math.random()*3|0;
+  if(type===0){ // scramble
+    const list=V[level].filter(w=>Array.isArray(w)&&typeof w[0]==='string');
+    const [w,m]=list[Math.random()*list.length|0];
+    ('spq').innerHTML=`<p style="text-align:center;color:#aaa">Unscramble ({m}):</p>
+      <div class="scrambled">${shuffle(w.split('')).join(' ')}</div>
+      <div style="text-align:center"><input id="sans" autocomplete="off" style="max-width:240px" onkeydown="if(event.key==='Enter')checkSpeed('${w}')"></div>
+      <div style="text-align:center;margin-top:8px"><button class="btn" onclick="checkSpeed('${w}')">✔</button></div>`;
+    $('sans').focus();
+  } else if(type===1){ // article
+    const pools={A1:ARTS[0],A2:ARTS[1],B1:ARTS[2]};
+    const [w,art]=pools[level][Math.random()*pools[level].length|0];
+    $('spq').innerHTML=`<p style="text-align:center;color:#aaa">Pick the article:</p>
+      <div class="scrambled">___ ${w}</div>
+      <div style="text-align:center">
+        <button class="btn artbtn" onclick="speedArt('${art}','der')">DER</button>
+        <button class="btn artbtn" onclick="speedArt('${art}','die')">DIE</button>
+        <button class="btn artbtn" onclick="speedArt('${art}','das')">DAS</button></div>`;
+  } else { // translation
+    const list=V[level].filter(w=>Array.isArray(w)&&typeof w[0]==='string');
+    const [w,m]=list[Math.random()*list.length|0];
+    const opts=shuffle([m,...shuffle(list.filter(x=>x!==w)).slice(0,3).map(x=>x[1])]);
+    ('spq').innerHTML=`<p style="text-align:center;color:#aaa">What does "{w}" mean?</p>
+      <div style="max-width:400px;margin:0 auto">{opts.map(o=>`<button class="quizopt" onclick="speedMean('{o.replace(/'/g,"\\'")}','m.replace(/′/g,"′")′)">{m.replace(/'/g,"\\'")}')">m.replace(/′/g,"′")′)">{o}</button>`).join('')}</div>`;
+  }
+}
+function speedOK(pts,msg_){ spScore+=pts; spCount++; reward(pts); msg(msg_,'correct'); setTimeout(nextSpeed,400); }
+function speedBad(t){ msg(t,'wrong'); fail(); setTimeout(nextSpeed,800); }
+function checkSpeed(w){
+  if((′sans′).value.trim().toUpperCase()===w)speedOK(12,‘✅('sans').value.trim().toUpperCase()===w) speedOK(12,`✅(′sans′).value.trim().toUpperCase()===w)speedOK(12,‘✅{w}! +12`);
+  else speedBad(`❌ It was ${w}`);
+}
+function speedArt(art,a){
+  document.querySelectorAll('.artbtn').forEach(b=>b.onclick=null);
+  if(a===art) speedOK(8,`✅ ${art}! +8`);
+  else speedBad(`❌ It's ${art.toUpperCase()}`);
+}
+function speedMean(o,m){
+  document.querySelectorAll('.quizopt').forEach(b=>b.onclick=null);
+  if(o===m) speedOK(8,'✅ Richtig! +8');
+  else speedBad(`❌ It means "${m}"`);
+}
+
+/* ============ RESET ============ */
+function resetProgress(){
+  if(confirm('Reset all progress?')){ score=0; streak=0; solved=0; save(); alert('Progress reset! 🔄'); }
+}
+
+load();
+</script>
+
+
